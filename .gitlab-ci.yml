@@ -1,0 +1,32 @@
+image: docker:latest
+
+services:
+  - docker:dind
+
+stages:
+  - build
+  - deploy
+
+variables:
+  PROJECT_ID: "your-gcp-project-id"
+  IMAGE_NAME: "fastapi-app"
+  GCP_ZONE: "your-gcp-zone"
+  GCP_INSTANCE_NAME: "your-instance-name"
+  GCLOUD_SERVICE_KEY: "your-base64-encoded-gcloud-service-account-key"
+
+before_script:
+  - echo $GCLOUD_SERVICE_KEY | base64 -d > ${CI_PROJECT_DIR}/gcloud-service-key.json
+  - gcloud auth activate-service-account --key-file=${CI_PROJECT_DIR}/gcloud-service-key.json
+  - gcloud config set project $PROJECT_ID
+  - gcloud auth configure-docker
+
+build:
+  stage: build
+  script:
+    - docker build -t gcr.io/$PROJECT_ID/$IMAGE_NAME:$CI_COMMIT_SHA .
+    - docker push gcr.io/$PROJECT_ID/$IMAGE_NAME:$CI_COMMIT_SHA
+
+deploy:
+  stage: deploy
+  script:
+    - gcloud compute ssh $GCP_INSTANCE_NAME --zone $GCP_ZONE --command "docker pull gcr.io/$PROJECT_ID/$IMAGE_NAME:$CI_COMMIT_SHA && docker-compose -f /path/to/your/docker-compose.yml up -d"
