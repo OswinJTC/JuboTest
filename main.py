@@ -6,8 +6,12 @@ from sqlalchemy.orm import sessionmaker
 from typing import List
 from database import async_session, MyItem
 
-
 app = FastAPI()
+
+@app.get("/")
+async def read_root():
+    return {"Hello": "World"}
+
 
 class MyItemCreate(BaseModel):
     text: str
@@ -23,9 +27,6 @@ async def get_db() -> AsyncSession:
     async with async_session() as session:
         yield session
 
-@app.get("/")
-async def read_root():
-    return {"Hello": "World"}
 
 @app.post("/items", response_model=MyItemRead)
 async def create_item(item: MyItemCreate, db: AsyncSession = Depends(get_db)):
@@ -37,6 +38,8 @@ async def create_item(item: MyItemCreate, db: AsyncSession = Depends(get_db)):
         return db_item
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal Server Error")
+    
+
 
 @app.get("/items", response_model=List[MyItemRead])
 async def list_items(limit: int = 10, db: AsyncSession = Depends(get_db)):
@@ -46,6 +49,8 @@ async def list_items(limit: int = 10, db: AsyncSession = Depends(get_db)):
         return items
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal Server Error")
+    
+
 
 @app.get("/items/{item_id}", response_model=MyItemRead)
 async def get_item(item_id: int, db: AsyncSession = Depends(get_db)):
